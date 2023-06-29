@@ -15,10 +15,15 @@ function _init()
     pixels_for_each_move = 1
 
     corner_distance_threshold = 6
-    thresholds = { ne=corner_distance_threshold, nw=corner_distance_threshold, se=corner_distance_threshold, sw=corner_distance_threshold }
+    thresholds = { ne = corner_distance_threshold, nw = corner_distance_threshold, se = corner_distance_threshold, sw = corner_distance_threshold }
     frames_between_each_score = 15
     frames_remaining_until_we_can_score = 0
     score = 0
+
+    frames_until_timer_tick = 30
+    timer = 60
+
+    debug = true
 end
 
 function tv_inner_left()
@@ -44,40 +49,49 @@ function maybe_bounce_logo()
     inner_top = tv_inner_top()
     inner_bottom = tv_inner_bottom()
 
-    function y_cornered()
-        return logo.y - corner_distance_threshold <= inner_top
-                or logo.y + logo.height + corner_distance_threshold >= inner_bottom
+    function nw()
+        t = thresholds.nw
+        return logo.x - t <= inner_left and logo.y - t <= inner_top
     end
 
-    function x_cornered()
-        return logo.x - corner_distance_threshold <= inner_left
-                or logo.x + logo.width + corner_distance_threshold >= inner_right
+    function ne()
+        t = thresholds.ne
+        return logo.x + logo.width + t >= inner_right and logo.y - t <= inner_top
+    end
+
+    function sw()
+        t = thresholds.sw
+        return logo.x - t <= inner_left and logo.y + logo.height + t >= inner_bottom
+    end
+
+    function se()
+        t = thresholds.se
+        return logo.x + logo.width + t >= inner_right and logo.y + logo.height + t >= inner_bottom
     end
 
     if logo.x <= inner_left then
         logo.x = inner_left + 1
-        -- logo.x += 1
         bounce_state.x = 1
-        bounce_state.hit_corner = bounce_state.hit_corner or y_cornered()
     end
     if logo.x + logo.width >= inner_right then
         logo.x = inner_right - logo.width - 1
-        -- logo.x -= 1
         bounce_state.x = -1
-        bounce_state.hit_corner = bounce_state.hit_corner or y_cornered()
     end
     if logo.y <= inner_top then
-        -- logo.y += 1
         logo.y = inner_top + 1
         bounce_state.y = 1
-        bounce_state.hit_corner = bounce_state.hit_corner or x_cornered()
     end
     if logo.y + logo.height >= inner_bottom then
-        -- logo.y -= 1
         logo.y = inner_bottom - logo.height - 1
         bounce_state.y = -1
-        bounce_state.hit_corner = bounce_state.hit_corner or x_cornered()
     end
+
+    bounced = bounce_state.x != 0 or bounce_state.y != 0
+
+    if bounced and nw() then bounce_state.hit_corner = "nw" end
+    if bounced and ne() then bounce_state.hit_corner = "ne" end
+    if bounced and sw() then bounce_state.hit_corner = "sw" end
+    if bounced and se() then bounce_state.hit_corner = "se" end
 
     return bounce_state
 end
@@ -88,13 +102,11 @@ function maybe_play_bounce_sound()
     end
 end
 
-function maybe_play_score_sound()
-    if stat(47) == -1 then
-        sfx(1, 1)
-    end
+function play_score_sound()
+    sfx(1, 0)
 end
 
-function maybe_move_square(dx, dy)
+function try_to_move_tv(dx, dy)
     new_x = tv.x + dx
     new_y = tv.y + dy
 
@@ -111,7 +123,7 @@ function maybe_move_square(dx, dy)
     end
 end
 
-function _update()
+function handle_tv_input()
     for btnpack in all({
         { b = 0, x = -1, y = 0 },
         { b = 1, x = 1, y = 0 },
@@ -119,60 +131,84 @@ function _update()
         { b = 3, x = 0, y = 1 }
     }) do
         if btnp(btnpack.b) then
-            maybe_move_square(btnpack.x, btnpack.y)
-        end
-    end
-
-    if btnp(5) then
-        logo.dx *= -1
-        logo.dy *= -1
-    end
-
-    if btn(4) then
-        frames_since_last_move += 1
-        if frames_remaining_until_we_can_score > 0 then
-            frames_remaining_until_we_can_score -= 1
-        end
-
-        if frames_since_last_move >= frames_between_each_move then
-            frames_since_last_move = 0
-            logo.x += pixels_for_each_move * logo.dx * logo.x_movement
-            logo.y += pixels_for_each_move * logo.dy * logo.y_movement
-        end
-
-        logo_bounce_state = maybe_bounce_logo()
-        sound = false
-
-        if logo_bounce_state.x != 0 and logo_bounce_state.x != logo.dx then
-            logo.dx *= -1
-            logo.x_movement = 2
-            logo.y_movement = 1
-            sound = true
-        end
-
-        if logo_bounce_state.y != 0 and logo_bounce_state.y != logo.dy then
-            logo.dy *= -1
-            logo.x_movement = 1
-            logo.y_movement = 2
-            sound = true
-        end
-
-        if logo_bounce_state.hit_corner then
-            if frames_remaining_until_we_can_score == 0 then
-                score += 1
-                frames_remaining_until_we_can_score = frames_between_each_score
-                if corner_distance_threshold > 1 then
-                    corner_distance_threshold -= 1
-                end
-                maybe_play_score_sound()
-            end
-        elseif sound then
-            maybe_play_bounce_sound()
+            try_to_move_tv(btnpack.x, btnpack.y)
         end
     end
 end
 
+function handle_rewind()
+    if debug and btnp(5) then
+        logo.dx *= -1
+        logo.dy *= -1
+    end
+end
+
+function handle_move_logo()
+    frames_since_last_move += 1
+    if frames_remaining_until_we_can_score > 0 then
+        frames_remaining_until_we_can_score -= 1
+    end
+
+    if frames_since_last_move >= frames_between_each_move then
+        frames_since_last_move = 0
+        logo.x += pixels_for_each_move * logo.dx * logo.x_movement
+        logo.y += pixels_for_each_move * logo.dy * logo.y_movement
+    end
+
+    logo_bounce_state = maybe_bounce_logo()
+    sound = false
+
+    if logo_bounce_state.x != 0 and logo_bounce_state.x != logo.dx then
+        logo.dx *= -1
+        logo.x_movement = 2
+        logo.y_movement = 1
+        sound = true
+    end
+
+    if logo_bounce_state.y != 0 and logo_bounce_state.y != logo.dy then
+        logo.dy *= -1
+        logo.x_movement = 1
+        logo.y_movement = 2
+        sound = true
+    end
+
+    if logo_bounce_state.hit_corner then
+        if frames_remaining_until_we_can_score == 0 then
+            score += 1
+            frames_remaining_until_we_can_score = frames_between_each_score
+            if thresholds[logo_bounce_state.hit_corner] > 1 then
+                thresholds[logo_bounce_state.hit_corner] -= 1
+            end
+            play_score_sound()
+        end
+    elseif sound then
+        maybe_play_bounce_sound()
+    end
+end
+
+function handle_decr_timer()
+    frames_until_timer_tick -= 1
+    
+    if frames_until_timer_tick <= 0 then
+        frames_until_timer_tick = 30
+        timer -= 1
+    end
+end
+
+function _update()
+    game_running = btn(4)
+
+    handle_tv_input()
+    handle_rewind()
+
+    if game_running then
+        handle_move_logo()
+        handle_decr_timer()
+    end
+end
+
 function render_tv()
+    -- White border
     for i = 0, tv.thickness - 1 do
         rect(
             tv.x + i,
@@ -183,7 +219,7 @@ function render_tv()
         )
     end
 
-
+    -- Blue interior
     rectfill(
         tv.x + tv.thickness,
         tv.y + tv.thickness,
@@ -193,18 +229,19 @@ function render_tv()
     )
 
     color(9)
+    -- Orange
     right = tv_inner_right()
     left = tv_inner_left()
     top = tv_inner_top()
     bottom = tv_inner_bottom()
 
     -- NORTHWEST
-    rectfill(left - tv.thickness + 1, top + thresholds.sw, left, top - tv.thickness + 1)
-    rectfill(left - tv.thickness + 1, top, left + thresholds.sw, top - tv.thickness + 1)
-    
+    rectfill(left - tv.thickness + 1, top + thresholds.nw, left, top - tv.thickness + 1)
+    rectfill(left - tv.thickness + 1, top, left + thresholds.nw, top - tv.thickness + 1)
+
     -- NORTHEAST
     rectfill(right - thresholds.ne, top, right + tv.thickness - 1, top - tv.thickness + 1)
-    rectfill(right, top + thresholds.se, right + tv.thickness - 1, top - tv.thickness + 1)
+    rectfill(right, top + thresholds.ne, right + tv.thickness - 1, top - tv.thickness + 1)
 
     -- SOUTHWEST
     rectfill(left - tv.thickness + 1, bottom - thresholds.sw, left, bottom + tv.thickness - 1)
@@ -226,11 +263,12 @@ function _draw()
     render_tv()
     render_logo()
     color()
-    print("score: " .. score)
-    can_score = "no"
-    if frames_remaining_until_we_can_score <= 0
-    then can_score = "yes"
-    end
+    print("score: " .. score, 1, 1)
+    print("timer: " .. timer, 92, 1)
+    -- can_score = "no"
+    -- if frames_remaining_until_we_can_score <= 0 then
+    --     can_score = "yes"
+    -- end
 
-    print(logo.x .. " | " .. logo.x + logo.width .. " | " .. tv_inner_right() - corner_distance_threshold .. " | " .. can_score, 0, 123)
+    -- print(logo.x .. " | " .. logo.x + logo.width .. " | " .. tv_inner_right() - corner_distance_threshold .. " | " .. can_score, 0, 123)
 end
