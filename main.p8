@@ -7,8 +7,8 @@
 -- * GROW SCREEN AND INCREASE LOGO SPEED OVER TIME
 
 function _init()
-    logo = { x = 64, y = 26, width = 32, height = 32, thickness = 1, dx = 1, dy = 1, x_movement = 1, y_movement = 1 }
-    tv = { x = 10, y = 10, width = 108, height = 108, thickness = 3 }
+    logo = { x = 18, y = 26, width = 32, height = 32, thickness = 1, dx = 1, dy = 1, x_movement = 1, y_movement = 1 }
+    tv = { x = 10, y = 10, width = 80, height = 80, thickness = 3 }
 
     frames_since_last_move = 0
     frames_between_each_move = 1
@@ -143,6 +143,22 @@ function handle_rewind()
     end
 end
 
+function handle_incr_score(corner)
+    score += 1
+    if thresholds[corner] > 1 then thresholds[corner] -= 1 end
+
+    if score % 5 == 0 then
+        pixels_for_each_move += 1
+    end
+
+    if score % 3 == 0 then
+        tv.width += 2
+        tv.height += 2
+    end
+
+    play_score_sound()
+end
+
 function handle_move_logo()
     frames_since_last_move += 1
     if frames_remaining_until_we_can_score > 0 then
@@ -174,12 +190,8 @@ function handle_move_logo()
 
     if logo_bounce_state.hit_corner then
         if frames_remaining_until_we_can_score == 0 then
-            score += 1
+            handle_incr_score(logo_bounce_state.hit_corner)
             frames_remaining_until_we_can_score = frames_between_each_score
-            if thresholds[logo_bounce_state.hit_corner] > 1 then
-                thresholds[logo_bounce_state.hit_corner] -= 1
-            end
-            play_score_sound()
         end
     elseif sound then
         maybe_play_bounce_sound()
