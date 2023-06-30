@@ -7,8 +7,8 @@
 -- * GROW SCREEN AND INCREASE LOGO SPEED OVER TIME
 
 function _init()
-    logo = { x = 18, y = 26, width = 32, height = 32, thickness = 1, dx = 1, dy = 1, x_movement = 1, y_movement = 1 }
-    tv = { x = 10, y = 10, width = 80, height = 80, thickness = 3 }
+    logo = { x = 40, y = 46, width = 32, height = 32, thickness = 1, dx = 1, dy = 1, x_movement = 1, y_movement = 1 }
+    tv = { x = 25, y = 30, width = 80, height = 60, thickness = 3 }
 
     frames_since_last_move = 0
     frames_between_each_move = 1
@@ -153,7 +153,7 @@ function handle_incr_score(corner)
 
     if score % 3 == 0 then
         tv.width += 2
-        tv.height += 2
+        tv.height = flr(tv.width * 0.75)
     end
 
     play_score_sound()
@@ -220,32 +220,58 @@ function _update()
 end
 
 function render_tv()
-    -- White border
+    right = tv_inner_right()
+    left = tv_inner_left()
+    top = tv_inner_top()
+    bottom = tv_inner_bottom()
+
+    -- Grey border
+    color(5)
     for i = 0, tv.thickness - 1 do
         rect(
             tv.x + i,
             tv.y + i,
             tv.x + tv.width - i,
-            tv.y + tv.height - i,
-            7
-        )
+            tv.y + tv.height - i
+              )
     end
 
-    -- Blue interior
+    -- Grey TV 
+    color(5)
+    xoffset = 10
+    tvboxheight = 12
+    rectfill(left + xoffset,
+        tv.y + tv.height + 1,
+        right - xoffset,
+        -- tv.x + tv.width - tv.thickness - xoffset - 1,
+        tv.y + tv.height + tvboxheight)
+
+    color(0)
+    button_start = 5
+    ovalfill(right - xoffset - 10,
+        tv.y + tv.height + button_start,
+        right - xoffset - 6,
+        tv.y + tv.height + button_start + 2)
+    
+    rectfill(left + xoffset + 7,
+       tv.y + tv.height + 4,
+       left + xoffset + 35,
+       tv.y + tv.height + 8
+)
+
+    -- Black interior
+    -- palt(0, false)
+    color(0)
     rectfill(
         tv.x + tv.thickness,
         tv.y + tv.thickness,
         tv.x + tv.width - tv.thickness,
-        tv.y + tv.height - tv.thickness,
-        5
+        tv.y + tv.height - tv.thickness
     )
 
-    color(9)
-    -- Orange
-    right = tv_inner_right()
-    left = tv_inner_left()
-    top = tv_inner_top()
-    bottom = tv_inner_bottom()
+    -- Light grey corners
+    color(6)
+
 
     -- NORTHWEST
     rectfill(left - tv.thickness + 1, top + thresholds.nw, left, top - tv.thickness + 1)
