@@ -417,6 +417,7 @@ end
 
 function handle_update_waiting()
     if btnp(4) then
+        reset_to_initial_values()
         set_playing()
     end
 
@@ -444,6 +445,7 @@ end
 
 function handle_update_game_over()
     if btnp(4) then
+        reset_to_initial_values()
         set_playing()
     end
 end
