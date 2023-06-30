@@ -2,7 +2,7 @@
 
 function reset_to_initial_values()
     logo = { x = 50, y = 50, width = 32, height = 32, thickness = 1, dx = 1, dy = 1, x_movement = 1, y_movement = 1 }
-    tv = { x = 20, y = 30, width = 90, height = 67, thickness = 3 }
+    tv = { x = 19, y = 30, width = 90, height = 67, thickness = 3 }
 
     states = { "waiting", "playing", "game-over" }
     state = 1
@@ -24,7 +24,7 @@ function reset_to_initial_values()
     flash_green_for_this_many_frames = 0
 
     sparks = {}
-    debug = true
+    debug = false
 end
 
 function _init()
@@ -482,12 +482,11 @@ function handle_update_waiting()
 end
 
 function handle_update_playing()
-    if btnp(4) then
+    if debug and btnp(4) then
         set_waiting()
     end
 
     handle_tv_input()
-    handle_rewind()
     handle_move_logo()
     handle_move_sparks()
     handle_decr_timer()
@@ -515,26 +514,69 @@ function _update()
     end
 end
 
-function _draw()
-    camera()
-    cls(1)
-    render_tv()
-    render_logo()
-    render_sparks()
-    color()
+function render_score()
     if flash_green_for_this_many_frames > 0 then
         color(11)
     else
         color(6)
     end
     print("score: " .. score, 1, 1)
+end
+
+function render_time()
     color(6)
     print("time: " .. timer, 96, 1)
-    color()
-    -- can_score = "no"
-    -- if frames_remaining_until_we_can_score <= 0 then
-    --     can_score = "yes"
-    -- end
+end
 
-    -- print(logo.x .. " | " .. logo.x + logo.width .. " | " .. tv_inner_right() - corner_distance_threshold .. " | " .. can_score, 0, 123)
+function hcenter(s)
+    -- screen center minus the
+    -- string length times the 
+    -- pixels in a char's width,
+    -- cut in half
+    return 64-#s*2
+end
+
+function handle_render_waiting()
+    color(2)
+    rectfill(24, 15, 104, 40)
+    color(6)
+    rectfill(26, 17, 102, 38)
+
+    color(0)
+    t = "press z to start"
+    print(t, hcenter(t), 25)
+end
+
+function handle_render_playing()
+    render_score()
+    render_time()
+end
+
+function handle_render_game_over()
+    color(2)
+    rectfill(24, 15, 104, 65)
+    color(6)
+    rectfill(26, 17, 102, 63)
+
+    color(0)
+    t="game over"
+    print(t, hcenter(t), 25)
+    t="score: " .. score
+    print(t, hcenter(t), 35)
+    t="z: play again"
+    print(t, hcenter(t), 55)
+end
+
+function _draw()
+    cls(1)
+    color()
+    render_tv()
+    render_logo()
+    render_sparks()
+
+    s = states[state]
+    if s == "waiting" then handle_render_waiting()
+    elseif s == "playing" then handle_render_playing()
+    elseif s == "game-over" then handle_render_game_over()
+    end
 end
