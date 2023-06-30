@@ -1,11 +1,5 @@
 -- THE GAME: shoot the DVD logo into the corner
 
--- TODO:
--- * DRAW ALL CORNERS
--- * SHRINK EACH CORNER WHEN IT IS HIT
--- * START WITH THE SCREEN A LITTLE SMALLER
--- * GROW SCREEN AND INCREASE LOGO SPEED OVER TIME
-
 function reset_to_initial_values()
     logo = { x = 50, y = 50, width = 32, height = 32, thickness = 1, dx = 1, dy = 1, x_movement = 1, y_movement = 1 }
     tv = { x = 20, y = 30, width = 90, height = 67, thickness = 3 }
@@ -203,7 +197,7 @@ function make_spark(corner)
     y = 0
     dx = 0
     dy = 0
-    move_amount = 2
+    move_amount = 1 + flr(rnd(2))
 
     if corner == "nw" then
         x = tv.x
@@ -244,9 +238,7 @@ function handle_incr_score(corner)
         frames_between_each_move = 1
     elseif score % 5 == 0 then
         pixels_for_each_move += 1
-    end
-
-    if score % 2 == 0 then
+    elseif score % 2 == 0 then
         tv.width += 2
         tv.height = flr(tv.width * 0.75)
     end
@@ -475,7 +467,7 @@ function _draw()
     render_sparks()
     color()
     print("score: " .. score, 1, 1)
-    print("timer: " .. timer, 92, 1)
+    print("time: " .. timer, 96, 1)
     -- can_score = "no"
     -- if frames_remaining_until_we_can_score <= 0 then
     --     can_score = "yes"
