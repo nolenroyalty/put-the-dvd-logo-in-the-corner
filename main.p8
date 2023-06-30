@@ -11,7 +11,7 @@ function reset_to_initial_values()
     frames_between_each_move = 2
     pixels_for_each_move = 1
 
-    corner_distance_threshold = 6
+    corner_distance_threshold = 2
     thresholds = { ne = corner_distance_threshold, nw = corner_distance_threshold, se = corner_distance_threshold, sw = corner_distance_threshold }
     frames_between_each_score = 15
     frames_remaining_until_we_can_score = 0
@@ -119,10 +119,26 @@ function maybe_bounce_logo()
 
     bounced = bounce_state.x != 0 or bounce_state.y != 0
 
-    if bounced and nw() then bounce_state.hit_corner = "nw" end
-    if bounced and ne() then bounce_state.hit_corner = "ne" end
-    if bounced and sw() then bounce_state.hit_corner = "sw" end
-    if bounced and se() then bounce_state.hit_corner = "se" end
+    if bounced and nw() then 
+        bounce_state.hit_corner = "nw"
+        logo.x = inner_left + 1
+        logo.y = inner_top + 1
+     end
+    if bounced and ne() then 
+        bounce_state.hit_corner = "ne"
+        logo.x = inner_right - logo.width - 1
+        logo.y = inner_top + 1 
+    end
+    if bounced and sw() then 
+        bounce_state.hit_corner = "sw"
+        logo.x = inner_left + 1
+        logo.y = inner_bottom - logo.height - 1
+     end
+    if bounced and se() then 
+        bounce_state.hit_corner = "se"
+        logo.x = inner_right - logo.width - 1
+        logo.y = inner_bottom - logo.height - 1
+    end
 
     return bounce_state
 end
@@ -230,6 +246,47 @@ function make_spark(corner)
     add(sparks, spark)
 end
 
+function handle_grow(corner)
+    horizontal_amount = 2
+    function grow_horizontal_if_possible(direction, recurse)
+        if direction == "L" then
+            if tv.x - horizontal_amount >= 0 then grow_left(horizontal_amount)
+            elseif recurse then grow_horizontal_if_possible("R", false)
+            else return false
+            end
+        elseif direction == "R" then
+            if tv.x + tv.width + horizontal_amount < 128 then
+                grow_right(horizontal_amount)
+            elseif recurse then grow_horizontal_if_possible("L", false)
+            else return false
+            end
+        end
+    end
+
+    function grow_vertical_if_possible(direction, amount, recurse)
+        if direction == "U" then
+            if tv.y - amount >= 0 then grow_up(amount)
+            elseif recurse then grow_vertical_if_possible("D", amount, false)
+            else return false
+            end
+        elseif direction == "D" then
+            if tv.y + tv.height + amount < 128 then grow_down(amount)
+            elseif recurse then grow_vertical_if_possible("U", amount, false)
+            else return false
+            end
+        end
+    end
+
+    vertical_amount_to_grow = flr(0.75 * (tv.width + horizontal_amount)) - tv.height
+    
+    hdirection = sub(corner, 1, 1) == "W" and "R" or "L"
+    vdirection = sub(corner, 2, 2) == "N" and "D" or "U"
+
+    if grow_horizontal_if_possible(hdirection, true) then
+        grow_vertical_if_possible(vdirection, vertical_amount_to_grow, true)
+    end
+end
+
 function handle_incr_score(corner)
     score += 1
     if thresholds[corner] > 2 then thresholds[corner] -= 1 end
@@ -239,8 +296,7 @@ function handle_incr_score(corner)
     elseif score % 5 == 0 then
         pixels_for_each_move += 1
     elseif score % 2 == 0 then
-        tv.width += 2
-        tv.height = flr(tv.width * 0.75)
+        handle_grow(corner)
     end
 
     number_of_sparks = 7 + 2 * flr(score / 5)
@@ -466,8 +522,15 @@ function _draw()
     render_logo()
     render_sparks()
     color()
+    if flash_green_for_this_many_frames > 0 then
+        color(11)
+    else
+        color(6)
+    end
     print("score: " .. score, 1, 1)
+    color(6)
     print("time: " .. timer, 96, 1)
+    color()
     -- can_score = "no"
     -- if frames_remaining_until_we_can_score <= 0 then
     --     can_score = "yes"
