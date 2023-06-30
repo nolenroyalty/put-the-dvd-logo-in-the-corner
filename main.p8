@@ -7,24 +7,24 @@
 -- * GROW SCREEN AND INCREASE LOGO SPEED OVER TIME
 
 function reset_to_initial_values()
-    logo = { x = 40, y = 46, width = 32, height = 32, thickness = 1, dx = 1, dy = 1, x_movement = 1, y_movement = 1 }
+    logo = { x = 50, y = 50, width = 32, height = 32, thickness = 1, dx = 1, dy = 1, x_movement = 1, y_movement = 1 }
     tv = { x = 20, y = 30, width = 90, height = 67, thickness = 3 }
 
     states = { "waiting", "playing", "game-over" }
     state = 1
 
     frames_since_last_move = 0
-    frames_between_each_move = 1
+    frames_between_each_move = 2
     pixels_for_each_move = 1
 
     corner_distance_threshold = 6
     thresholds = { ne = corner_distance_threshold, nw = corner_distance_threshold, se = corner_distance_threshold, sw = corner_distance_threshold }
-    frames_between_each_score = 5
+    frames_between_each_score = 15
     frames_remaining_until_we_can_score = 0
     score = 0
 
     frames_until_timer_tick = 30
-    timer = 30
+    timer = 45
 
     frames_to_flash_green_for = 10
     flash_green_for_this_many_frames = 0
@@ -58,19 +58,19 @@ function randsign()
 end
 
 function tv_inner_left()
-    return tv.x + tv.thickness - 1
+    return flr(tv.x + tv.thickness - 1)
 end
 
 function tv_inner_right()
-    return tv.x + tv.width - tv.thickness + 1
+    return flr(tv.x + tv.width - tv.thickness + 1)
 end
 
 function tv_inner_top()
-    return tv.y + tv.thickness - 1
+    return flr(tv.y + tv.thickness - 1)
 end
 
 function tv_inner_bottom()
-    return tv.y + tv.height - tv.thickness + 1
+    return flr(tv.y + tv.height - tv.thickness + 1)
 end
 
 function maybe_bounce_logo()
@@ -80,6 +80,12 @@ function maybe_bounce_logo()
     inner_top = tv_inner_top()
     inner_bottom = tv_inner_bottom()
 
+    -- It's a little hard to think about, but we need to use <= for north and west
+    -- but > for south and east. This is because a pixel has a size of...1 by 1 pixel,
+    -- and that size is drawn from the top left corner of the pixel - so there's an implicit
+    -- 1 that we're adding for our north / east comparisons. ugh. I can't explain
+    -- this without a diagram.
+
     function nw()
         t = thresholds.nw
         return logo.x - t <= inner_left and logo.y - t <= inner_top
@@ -87,24 +93,24 @@ function maybe_bounce_logo()
 
     function ne()
         t = thresholds.ne
-        return logo.x + logo.width + t >= inner_right and logo.y - t <= inner_top
+        return logo.x + logo.width + t > inner_right and logo.y - t <= inner_top
     end
 
     function sw()
         t = thresholds.sw
-        return logo.x - t <= inner_left and logo.y + logo.height + t >= inner_bottom
+        return logo.x - t <= inner_left and logo.y + logo.height + t > inner_bottom
     end
 
     function se()
         t = thresholds.se
-        return logo.x + logo.width + t >= inner_right and logo.y + logo.height + t >= inner_bottom
+        return logo.x + logo.width + t > inner_right and logo.y + logo.height + t > inner_bottom
     end
 
     if logo.x <= inner_left then
         logo.x = inner_left + 1
         bounce_state.x = 1
     end
-    if logo.x + logo.width >= inner_right then
+    if logo.x + logo.width > inner_right then
         logo.x = inner_right - logo.width - 1
         bounce_state.x = -1
     end
@@ -112,7 +118,7 @@ function maybe_bounce_logo()
         logo.y = inner_top + 1
         bounce_state.y = 1
     end
-    if logo.y + logo.height >= inner_bottom then
+    if logo.y + logo.height > inner_bottom then
         logo.y = inner_bottom - logo.height - 1
         bounce_state.y = -1
     end
@@ -197,7 +203,7 @@ function make_spark(corner)
     y = 0
     dx = 0
     dy = 0
-    move_amount = 1
+    move_amount = 2
 
     if corner == "nw" then
         x = tv.x
@@ -221,7 +227,7 @@ function make_spark(corner)
         dy = move_amount
     end
 
-    random_amount = 4
+    random_amount = 6
     x += flr(rnd(random_amount)) * randsign()
     y += flr(rnd(random_amount)) * randsign()
 
@@ -232,18 +238,20 @@ end
 
 function handle_incr_score(corner)
     score += 1
-    if thresholds[corner] > 1 then thresholds[corner] -= 1 end
+    if thresholds[corner] > 2 then thresholds[corner] -= 1 end
 
-    if score % 5 == 0 then
+    if score == 5 then
+        frames_between_each_move = 1
+    elseif score % 5 == 0 then
         pixels_for_each_move += 1
     end
 
     if score % 2 == 0 then
-        tv.width += 1.5
+        tv.width += 2
         tv.height = flr(tv.width * 0.75)
     end
 
-    number_of_sparks = 6 + 2 * flr(score / 5)
+    number_of_sparks = 7 + 2 * flr(score / 5)
     for i = 1, number_of_sparks do
         make_spark(corner)
     end
@@ -331,7 +339,6 @@ function render_tv()
     else
         color(5)
     end
-    -- color(5)
     for i = 0, tv.thickness - 1 do
         rect(
             tv.x + i,
@@ -382,7 +389,7 @@ function render_tv()
     if flash_green_for_this_many_frames > 0 then
         color(11)
     else
-        color(6)
+        color(9)
     end
 
     -- NORTHWEST
@@ -417,7 +424,6 @@ end
 
 function handle_update_waiting()
     if btnp(4) then
-        reset_to_initial_values()
         set_playing()
     end
 
